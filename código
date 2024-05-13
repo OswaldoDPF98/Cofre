@@ -1,0 +1,138 @@
+#include <Key.h>
+#include <Keypad.h> // a biblioteca para o teclado 4x4
+#include <LiquidCrystal_I2C.h> // a biblioteca para o lcd i2c 1602
+#include <Servo.h> // a biblioteca para controlar o motor servo
+LiquidCrystal_I2C lcd(0x27,18,2); // obtém o lcd
+Servo servo;
+
+#define Tamanho_Senha 5 // o tamanho da senha, se a senha tiver 4 dígitos, defina isso como 5
+int Posicao = 0; // posição do servo
+char Particular[Tamanho_Senha]; // o tamanho da senha
+char Especifico[Tamanho_Senha] = "0000"; // a senha que é chamada de específica no código, altere isso para qualquer coisa que você quiser com os números de 0 a 9 e as letras de A a D
+byte Contagem_Particular = 0, Contagem_Especifico = 0; // conta a quantidade de dígitos e verifica se a senha está correta
+char Tecla; 
+const byte LINHAS = 4; // a quantidade de linhas no teclado
+const byte COLUNAS = 4; // a quantidade de colunas no teclado
+char teclas[LINHAS][COLUNAS] = { // define as linhas e colunas
+
+  // define os dígitos do teclado
+  {'1','2','3','A'}, 
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+
+bool PortaInteligente = true; // o servo
+// os pinos para conectar o teclado
+byte pinosLinha[LINHAS] = {8, 7, 6, 5}; 
+byte pinosColuna[COLUNAS] = {4, 3, 2, 1}; 
+Keypad meuTeclado( makeKeymap(teclas), pinosLinha, pinosColuna, LINHAS, COLUNAS); // obtém os dados do teclado
+
+void setup(){
+
+  servo.attach(0); // anexa o servo ao pino 0
+  ServoFechar(); // fecha o servo quando você diz esta função
+  lcd.init(); // inicializa o lcd
+  lcd.backlight(); // liga a luz de fundo
+}
+
+void loop(){
+  if (PortaInteligente == 0){ // abre a porta inteligente
+  
+    Tecla = meuTeclado.getKey(); // a palavra tecla = meuTeclado que obtém o valor
+    if (Tecla == '#'){ // quando a tecla '#' é pressionada
+    
+      lcd.clear(); // limpa o display lcd
+      ServoFechar(); // fecha o motor servo
+      lcd.setCursor(2,0); // define o cursor no lcd
+      lcd.print("Cofre trancado."); // imprime o texto no lcd
+
+      lcd.setCursor(14,0); // define o cursor no lcd
+      lcd.write(0); // imprime o primeiro caractere quando você está na página de porta fechada
+      delay(3000); // espera 3 segundos
+      PortaInteligente = 1; // fecha a porta
+    }
+  }
+  else Abrir(); // mantém a porta aberta
+}
+
+void limparDados(){ // limpa os dados
+      
+  while (Contagem_Particular != 0){ // conta os dígitos pressionados
+        
+    Particular[Contagem_Particular--] = 0; // conta quantos dígitos
+  }
+  
+  return; // retorna os dados
+}
+
+void ServoAbrir(){ // abre o servo
+      
+  for (Posicao = 170; Posicao >= 0; Posicao -= 5){ // move de 0 a 180 graus
+    servo.write(Posicao); // move para a posição
+    delay(15); // espera 15 milissegundos
+  }
+}
+
+void ServoFechar(){ // fecha o servo
+
+  for (Posicao = 0; Posicao <= 170; Posicao += 5){ // move da posição 0 a 180 graus
+    servo.write(Posicao); // move para a posição
+    delay(15); // espera 15 milissegundos
+  }
+}
+
+void Abrir(){ // declarações de função
+
+  lcd.setCursor(1,0); // define o cursor no lcd
+  lcd.print("Digite a senha"); // imprime o texto
+  Tecla = meuTeclado.getKey(); // obtém as teclas que você pressiona do teclado
+  if (Tecla){
+    
+    Particular[Contagem_Particular] = Tecla; 
+    lcd.setCursor(Contagem_Particular, 1); // define o cursor no lcd
+    lcd.print("*"); // imprime '*' em vez da senha
+    Contagem_Particular++; // conta o tamanho da senha
+  }
+
+  if (Contagem_Particular == Tamanho_Senha - 1){ // obtém o tamanho da senha
+
+    if (!strcmp(Particular, Especifico)){ // conta o tamanho e verifica se a senha está correta
+      
+      lcd.clear();
+      ServoAbrir(); // move o servo 180 graus
+      lcd.setCursor(2,0); // define o cursor no lcd
+      lcd.print("Porta aberta");
+      lcd.setCursor(14,0); // define o cursor no lcd
+      lcd.write(1);
+      lcd.setCursor(0,1); // define o cursor no lcd
+      lcd.print("Pressione # para fechar");
+      PortaInteligente = 0;
+    }
+    
+    else{
+      
+      lcd.clear();
+      lcd.setCursor(0,0); // define o cursor no lcd
+      lcd.print("Senha incorreta"); // imprime o texto/caracteres
+      lcd.setCursor(0,1);
+      lcd.print("Tente de novo em");
+      lcd.setCursor(13,1);
+      lcd.print("03");
+      delay(1000);
+      lcd.setCursor(13,1);
+      lcd.print("02");
+      delay(1000);
+      lcd.setCursor(13,1);
+      lcd.print("01");
+      delay(1000);
+      lcd.setCursor(13,1);
+      lcd.print("00");
+      delay(1000);
+      lcd.clear();
+      PortaInteligente = 1; // fecha a porta inteligente
+    }
+    
+    limparDados(); // limpa os dados
+  }
+}
